@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
+<layout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <data>
@@ -15,7 +16,7 @@
         android:focusable="true"
         android:foreground="?attr/selectableItemBackgroundBorderless">
 
-        <!-- Title TextView -->
+        <!-- Title TextView: displays on one line -->
         <TextView
             android:id="@+id/textTitle"
             android:layout_width="0dp"
@@ -28,40 +29,24 @@
             android:maxLines="1"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginBottom="8dp" />
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- File Name TextView -->
-        <TextView
-            android:id="@+id/textFileName"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="File Name"
-            android:textSize="16sp"
-            android:textColor="@android:color/black"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:fontFamily="sans-serif-medium"
-            app:layout_constraintTop_toBottomOf="@id/textTitle"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/textFileId"
-            android:layout_marginEnd="8dp" />
-
-        <!-- File ID TextView -->
+        <!-- File ID TextView: placed below the title -->
         <TextView
             android:id="@+id/textFileId"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:text="File ID"
             android:textSize="14sp"
             android:textColor="@android:color/darker_gray"
             android:fontFamily="sans-serif"
             app:layout_constraintTop_toBottomOf="@id/textTitle"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/buttonDelete"
-            android:layout_marginEnd="16dp" />
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="8dp" />
 
-        <!-- Delete Button -->
+        <!-- Delete Button: anchored to the right side -->
         <ImageButton
             android:id="@+id/buttonDelete"
             android:layout_width="40dp"
@@ -74,5 +59,6 @@
             app:layout_constraintTop_toBottomOf="@id/textTitle"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

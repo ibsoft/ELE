@@ -112,7 +112,7 @@ class AssistantsActivity : AppCompatActivity() {
         if (!isNetworkAvailable()) {
             Toast.makeText(
                 this@AssistantsActivity,
-                "It looks like you're offline. Please check your internet connection and try again.",
+                "It looks like you're offline. Please check your internet connection.",
                 Toast.LENGTH_LONG
             ).show()
             return
@@ -147,7 +147,7 @@ class AssistantsActivity : AppCompatActivity() {
                 } else {
                     Toast.makeText(
                         this@AssistantsActivity,
-                        "We couldn't load your assistants right now. Please try again later.",
+                        "We couldn't load your assistants. Check your settings.",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -155,7 +155,7 @@ class AssistantsActivity : AppCompatActivity() {
                 Log.e("AssistantsActivity", "Error loading assistants: ${e.message}")
                 Toast.makeText(
                     this@AssistantsActivity,
-                    "Sorry, we had trouble loading your assistants. Please check your internet connection and try again.",
+                    "Please check your internet connection.",
                     Toast.LENGTH_LONG
                 ).show()
             }

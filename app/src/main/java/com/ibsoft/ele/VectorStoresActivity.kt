@@ -135,7 +135,7 @@ class VectorStoresActivity : AppCompatActivity() {
         if (!isNetworkAvailable()) {
             Toast.makeText(
                 this@VectorStoresActivity,
-                "It seems you're offline. Please check your internet connection and try again.",
+                "Check your internet connection.",
                 Toast.LENGTH_LONG
             ).show()
             return
@@ -165,7 +165,7 @@ class VectorStoresActivity : AppCompatActivity() {
                 } else {
                     Toast.makeText(
                         this@VectorStoresActivity,
-                        "We couldn't load your vector stores at the moment. Please try again later.",
+                        "We couldn't load your vector stores at the moment.",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -173,7 +173,7 @@ class VectorStoresActivity : AppCompatActivity() {
                 Log.e("VectorStoresActivity", "Error loading vector stores: ${e.message}")
                 Toast.makeText(
                     this@VectorStoresActivity,
-                    "Sorry, we had trouble connecting. Please check your internet connection and try again.",
+                    "Please check your internet connection and try again.",
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -205,14 +205,14 @@ class VectorStoresActivity : AppCompatActivity() {
             } else {
                 Toast.makeText(
                     this,
-                    "We couldn't delete your vector store. Please try again later.",
+                    "We couldn't delete your vector store.",
                     Toast.LENGTH_SHORT
                 ).show()
             }
         } catch (e: Exception) {
             Toast.makeText(
                 this,
-                "Oops, something went wrong while deleting your vector store. Please try again later.",
+                "Oops, something went wrong while deleting your vector store.",
                 Toast.LENGTH_SHORT
             ).show()
         }

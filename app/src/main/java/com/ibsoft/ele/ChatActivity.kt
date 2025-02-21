@@ -196,15 +196,16 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
      * Builds a conversation context string from the last 5 messages.
      */
     private suspend fun buildConversationContext(): String = withContext(Dispatchers.IO) {
-        // Retrieve the context window setting from SharedPreferences.
+        // Retrieve the context window setting from SharedPreferences ("context_window").
         // Default to "5" if not set.
         val sharedPref = getSharedPreferences("UserSettings", Context.MODE_PRIVATE)
         val contextWindowString = sharedPref.getString("context_window", "5")
         val contextWindow = contextWindowString?.toIntOrNull() ?: 5
 
-        // Retrieve and sort messages by timestamp.
+        // Retrieve all messages for the conversation and sort them by timestamp.
         val allMessages = db.messageDao().getMessagesForConversation(conversationId)
         val sortedMessages = allMessages.sortedBy { it.timestamp }
+
         // Take the last 'contextWindow' messages.
         val lastMessages = sortedMessages.takeLast(contextWindow)
 
@@ -219,6 +220,7 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
 
+
     /**
      * Updates the assistant with the specified vector store configuration.
      */
@@ -230,23 +232,35 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val response = withContext(Dispatchers.IO) {
                 api.updateAssistant(assistantId, "Bearer $apiKey", request)
             }
-            response.body()?.let { assistantResponse ->
-                Log.d("ChatActivity", "Assistant updated with vector store! Response id: ${assistantResponse.id}")
-                runOnUiThread {
-                    Toast.makeText(this@ChatActivity, "Ready to chat?", Toast.LENGTH_SHORT).show()
+            if (response.isSuccessful) {
+                response.body()?.let { assistantResponse ->
+                    Log.d("ChatActivity", "Assistant updated with vector store! Response id: ${assistantResponse.id}")
+                    runOnUiThread {
+                        Toast.makeText(this@ChatActivity, "Ready to chat!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } else {
+                // Read the error message from the response error body.
+                val errorBodyString = response.errorBody()?.string() ?: "Unknown error"
+                Log.e("ChatActivity", "Error updating assistant: $errorBodyString")
+                if (errorBodyString.contains("No vector store found", ignoreCase = true)) {
+                    runOnUiThread {
+                        Toast.makeText(this@ChatActivity, "Check your settings", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(this@ChatActivity, "Check your settings", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         } catch (e: Exception) {
-            Log.e("ChatActivity", "Failed to update assistant: ${e.message}")
+            Log.e("ChatActivity", "Exception updating assistant: ${e.message}")
             runOnUiThread {
-                Toast.makeText(
-                    this@ChatActivity,
-                    "We had trouble updating the assistant. Please check your connection or settings.",
-                    Toast.LENGTH_LONG
-                ).show()
+                Toast.makeText(this@ChatActivity, "Check your settings.", Toast.LENGTH_LONG).show()
             }
         }
     }
+
 
     /**
      * Sends a user message using the OpenAI Assistants API workflow.
@@ -271,7 +285,7 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 val fakeMsg = Message(
                     conversationId = conversationId,
                     sender = "bot",
-                    message = "Configuration missing! Please set your Assistant ID and Vector Store ID in Settings.",
+                    message = "Configuration missing! Check your Settings",
                     timestamp = System.currentTimeMillis()
                 )
                 CoroutineScope(Dispatchers.IO).launch {
@@ -282,7 +296,7 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 binding.messageRecyclerView.scrollToPosition(messageList.size - 1)
                 Toast.makeText(
                     this@ChatActivity,
-                    "Assistant config is missing. Please update your settings.",
+                    "Assistant config is missing. Please check your settings.",
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -330,7 +344,7 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             // Step 5: Poll for run completion
             var runStatus: String
             do {
-                delay(2000)
+                delay(1000)
                 val statusResp = withContext(Dispatchers.IO) {
                     api.getRunStatus(threadId, runId, authHeader)
                 }
@@ -378,7 +392,7 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 binding.loadingImageView.visibility = View.GONE
                 Toast.makeText(
                     this@ChatActivity,
-                    "We had trouble processing your request. Please check your connection.",
+                    "Please check again your settings.",
                     Toast.LENGTH_LONG
                 ).show()
             }

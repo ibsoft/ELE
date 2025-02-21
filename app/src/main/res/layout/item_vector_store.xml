@@ -1,50 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
+<layout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+
     <data>
         <!-- Optionally declare a variable for VectorStoreResponse -->
     </data>
+
     <LinearLayout
+        android:id="@+id/linearLayoutStore"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="vertical"
         android:padding="8dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackgroundBorderless">
 
+        <!-- Row 1: Store Name -->
         <TextView
             android:id="@+id/textStoreName"
-            android:layout_width="0dp"
-            android:layout_weight="1"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Store Name"
             android:textSize="16sp"
-            android:textStyle="bold"/>
+            android:textStyle="bold"
+            android:ellipsize="end"
+            android:maxLines="1" />
 
-        <TextView
-            android:id="@+id/textStoreId"
-            android:layout_width="wrap_content"
+        <!-- Row 2: Store ID and Action Buttons -->
+        <LinearLayout
+            android:id="@+id/linearLayoutStoreActions"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Store ID"
-            android:textSize="14sp"
-            android:layout_marginEnd="8dp"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="4dp">
 
-        <ImageButton
-            android:id="@+id/buttonCopy"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:src="@drawable/ic_copy"
-            android:scaleType="centerInside"
-            android:contentDescription="Copy Store ID"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            <TextView
+                android:id="@+id/textStoreId"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Store ID"
+                android:textSize="14sp"
+                android:textColor="@android:color/darker_gray"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:layout_marginEnd="8dp" />
 
-        <ImageButton
-            android:id="@+id/buttonDelete"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:src="@drawable/ic_delete"
-            app:tint="@color/error_red"
-            android:scaleType="centerInside"
-            android:contentDescription="Delete Store"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            <ImageButton
+                android:id="@+id/buttonCopy"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_copy"
+                android:scaleType="centerInside"
+                android:contentDescription="Copy Store ID"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+
+            <ImageButton
+                android:id="@+id/buttonDelete"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_delete"
+                app:tint="@color/error_red"
+                android:scaleType="centerInside"
+                android:contentDescription="Delete Store"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+
+        </LinearLayout>
+
     </LinearLayout>
 </layout>
