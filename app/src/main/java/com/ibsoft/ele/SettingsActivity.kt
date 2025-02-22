@@ -41,8 +41,8 @@ class SettingsActivity : AppCompatActivity() {
 
         // Load the custom prompt.
         binding.editTextCustomPrompt.setText(sharedPref.getString("custom_user_prompt", ""))
-        // Load the conversation context window setting; default is "5".
-        binding.editTextContextWindow.setText(sharedPref.getString("context_window", "5"))
+        // Load the conversation context window setting; default is "3".
+        binding.editTextContextWindow.setText(sharedPref.getString("context_window", "3"))
 
         binding.buttonSavePrompt.setOnClickListener {
             val newPrompt = binding.editTextCustomPrompt.text.toString().trim()
@@ -111,7 +111,7 @@ class SettingsActivity : AppCompatActivity() {
                     binding.editTextAssistantId.setText("")
                     binding.editTextVectorstoreId.setText("")
                     // Reset the conversation context window to default "5".
-                    binding.editTextContextWindow.setText("5")
+                    binding.editTextContextWindow.setText("1")
                     // Update the database with blank values.
                     uiScope.launch {
                         withContext(Dispatchers.IO) {

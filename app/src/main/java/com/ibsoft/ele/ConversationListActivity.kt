@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -13,13 +15,17 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import android.view.Menu
-import android.view.MenuItem
 import com.ibsoft.ele.adapter.ConversationAdapter
+import com.ibsoft.ele.databinding.ActivityConversationListBinding
 import com.ibsoft.ele.db.AppDatabase
 import com.ibsoft.ele.model.Conversation
-import com.ibsoft.ele.databinding.ActivityConversationListBinding
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
 
 class ConversationListActivity : AppCompatActivity() {
 
@@ -29,6 +35,9 @@ class ConversationListActivity : AppCompatActivity() {
     private lateinit var db: AppDatabase
     private val activityJob = Job()
     private val uiScope = CoroutineScope(Dispatchers.Main + activityJob)
+
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -117,6 +126,15 @@ class ConversationListActivity : AppCompatActivity() {
             showCreateConversationDialog()
         }
     }
+
+    //to show menu icons
+    override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
+        if (menu is androidx.appcompat.view.menu.MenuBuilder) {
+            menu.setOptionalIconsVisible(true)
+        }
+        return super.onPrepareOptionsMenu(menu)
+    }
+
 
     override fun onResume() {
         super.onResume()
