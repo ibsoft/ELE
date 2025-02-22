@@ -52,6 +52,42 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private val randomWords = listOf(
+        "Okay","Ok","Reasoning>", "Thinking>", "Analyzing>", "Processing>", "Computing>",
+        "Evaluating>", "Synthesizing>", "Formulating>", "Deciding>", "Conceptualizing>",
+        "Imagining>", "Predicting>", "Investigating>", "Exploring>", "Innovating>",
+        "Almost there>", "Designing>", "Solving>", "Examining>", "Reviewing>",
+        "Studying>", "Contemplating>", "Ruminating>", "Musing>", "Reflecting>",
+        "Inferring>", "Calculating>", "Interpreting>", "Considering>", "Perceiving>",
+        "Observing>", "Diagnosing>", "Brainstorming>", "Pondering>", "Rationalizing>",
+        "Understanding>", "Learning>", "Communicating>", "Deciphering>", "Correlating>",
+        "Visualizing>", "Estimating>", "Optimizing>", "Planning>", "Organizing>",
+        "Mapping>", "Charting>", "Strategizing>", "Hypothesizing>", "Projecting>",
+        "Comparing>", "Contrasting>", "Benchmarking>", "Prioritizing>", "Assessing>",
+        "Appraising>", "Scrutinizing>", "Detecting>", "Confirming>", "Verifying>",
+        "Aligning>", "Matching>", "Balancing>", "Adapting>", "Transforming>",
+        "Enhancing>", "Envisioning>", "Focusing>", "Clarifying>", "Distilling>",
+        "Revising>", "Experimenting>", "Modulating>", "Simplifying>", "Complicating>",
+        "Enriching>", "Broadening>", "Narrowing>", "Interacting>", "Merging>",
+        "Integrating>", "Unifying>", "Bridging>", "Linking>", "Combining>",
+        "Aggregating>", "Harmonizing>", "Coordinating>", "Implementing>", "Deploying>",
+        "Executing>", "Activating>", "Engaging>", "Inspiring>", "Creating>",
+        "Conceiving>", "Refining>", "Controlling>", "Realizing>", "Evolving>"
+    )
+
+
+    private var loadingWordsJob: Job? = null
+
+    private fun startRandomWordCycle() {
+        loadingWordsJob = CoroutineScope(Dispatchers.Main).launch {
+            while (isActive) {
+                binding.loadingRandomText.text = randomWords.random()
+                delay(1100L)  // change word every second
+            }
+        }
+    }
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityChatBinding.inflate(layoutInflater)
@@ -138,6 +174,7 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             .load(R.drawable.loading_animation)
             .into(binding.loadingImageView)
 
+
         // Set up Retrofit with logging interceptor and increased timeouts.
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
@@ -193,14 +230,14 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     /**
-     * Builds a conversation context string from the last 5 messages.
+     * Builds a conversation context string from the last 3 messages.
      */
     private suspend fun buildConversationContext(): String = withContext(Dispatchers.IO) {
         // Retrieve the context window setting from SharedPreferences ("context_window").
-        // Default to "5" if not set.
+        // Default to "1" if not set.
         val sharedPref = getSharedPreferences("UserSettings", Context.MODE_PRIVATE)
-        val contextWindowString = sharedPref.getString("context_window", "5")
-        val contextWindow = contextWindowString?.toIntOrNull() ?: 5
+        val contextWindowString = sharedPref.getString("context_window", "3")
+        val contextWindow = contextWindowString?.toIntOrNull() ?: 3
 
         // Retrieve all messages for the conversation and sort them by timestamp.
         val allMessages = db.messageDao().getMessagesForConversation(conversationId)
@@ -307,7 +344,14 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         try {
             Log.d("ChatActivity", "Assistant ID: $assistantId")
-            withContext(Dispatchers.Main) { binding.loadingImageView.visibility = View.VISIBLE }
+            withContext(Dispatchers.Main) {
+                binding.loadingImageView.visibility = View.VISIBLE
+                binding.loadingContainer.visibility = View.VISIBLE
+                binding.loadingImageView.visibility = View.VISIBLE
+                binding.loadingRandomText.visibility = View.VISIBLE
+                startRandomWordCycle()  // Picks a random word
+            }
+
 
             // Step 1: Create a new thread
             val threadResponse = withContext(Dispatchers.IO) { api.createThread(authHeader, CreateThreadRequest()) }
@@ -385,6 +429,7 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 messageAdapter.notifyItemInserted(messageList.size - 1)
                 binding.messageRecyclerView.scrollToPosition(messageList.size - 1)
                 binding.loadingImageView.visibility = View.GONE
+                binding.loadingRandomText.visibility = View.GONE
             }
         } catch (e: Exception) {
             e.printStackTrace()
