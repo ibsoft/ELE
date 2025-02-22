@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -6,23 +5,52 @@
     android:orientation="vertical"
     android:padding="8dp">
 
-    <!-- RecyclerView for displaying chat messages -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/messageRecyclerView"
+    <!-- Content container: RecyclerView with an overlaid loading container -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:padding="8dp" />
+        android:layout_weight="1">
 
-    <!-- Loading animation view below messages -->
-    <ImageView
-        android:id="@+id/loadingImageView"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:layout_gravity="center_horizontal"
-        android:contentDescription="Loading animation"
-        android:background="@android:color/transparent"
-        android:visibility="gone" />
+        <!-- RecyclerView (background) -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/messageRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="8dp"
+            android:paddingBottom="200dp"
+            android:clipToPadding="false" />
+
+        <!-- Loading container overlaid at bottom center -->
+        <LinearLayout
+            android:id="@+id/loadingContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/loadingImageView"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:contentDescription="Loading animation"
+                android:background="@android:color/transparent"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/loadingRandomText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Random words here"
+                android:textSize="16sp"
+                android:textColor="#808080"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </LinearLayout>
+
+    </FrameLayout>
 
     <!-- ProgressBar for file upload progress -->
     <ProgressBar
@@ -33,7 +61,7 @@
         android:max="100"
         android:visibility="gone" />
 
-    <!-- Container for the chat input and buttons -->
+    <!-- Chat input container -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

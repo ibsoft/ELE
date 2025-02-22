@@ -5,7 +5,8 @@
     android:layout_height="wrap_content"
     android:padding="8dp"
     android:gravity="end"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:layout_marginBottom="8dp"> <!-- Added margin to separate from next items -->
 
     <!-- User message bubble -->
     <LinearLayout
@@ -38,11 +39,12 @@
 
     <!-- Row for user icon and copy button -->
     <LinearLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="end"
-        android:layout_marginTop="4dp">
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical">
 
         <ImageButton
             android:id="@+id/buttonCopy"
@@ -61,7 +63,6 @@
             android:src="@drawable/ic_user"
             android:scaleType="centerInside"
             android:contentDescription="User Icon" />
-
-
     </LinearLayout>
+
 </LinearLayout>

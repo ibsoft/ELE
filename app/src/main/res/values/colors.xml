@@ -14,4 +14,5 @@
     <color name="accentColor">#51c182</color>
     <color name="lightBlue">#DCF8C6</color>
     <color name="error_red">#dc483c</color>
+    <color name="footerBackgroundColor">#3F51B5</color>
 </resources>

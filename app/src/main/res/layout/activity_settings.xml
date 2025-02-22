@@ -68,8 +68,8 @@
             android:id="@+id/editTextContextWindow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Enter number of messages (default 5)"
-            android:text="5" />
+            android:hint="Enter number of messages (default 3)"
+            android:text="3" />
 
         <Button
             android:id="@+id/buttonSaveApiConfig"
