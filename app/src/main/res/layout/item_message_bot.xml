@@ -47,8 +47,8 @@
         <!-- Copy Code Button -->
         <ImageButton
             android:id="@+id/buttonCopyCode"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             android:src="@drawable/ic_copy"
             android:scaleType="centerInside"
             android:background="?attr/selectableItemBackgroundBorderless"
@@ -79,8 +79,8 @@
         <!-- Icon for bot -->
         <ImageView
             android:id="@+id/imageIcon"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             android:src="@drawable/ic_assistant"
             android:contentDescription="Assistant Icon" />
 
@@ -88,8 +88,8 @@
             xmlns:android="http://schemas.android.com/apk/res/android"
             xmlns:app="http://schemas.android.com/apk/res-auto"
             android:id="@+id/buttonCopy"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             app:srcCompat="@drawable/ic_menu_copy"
             android:scaleType="centerInside"
             android:contentDescription="Copy"
@@ -97,8 +97,8 @@
 
         <ImageButton
             android:id="@+id/buttonTTS"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             android:src="@drawable/ic_speaker"
             android:scaleType="centerInside"
             android:background="?attr/selectableItemBackgroundBorderless"
@@ -106,8 +106,8 @@
 
         <ImageButton
             android:id="@+id/buttonLike"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             android:src="@drawable/ic_thumb_up"
             android:scaleType="centerInside"
             android:background="?attr/selectableItemBackgroundBorderless"
@@ -115,8 +115,8 @@
 
         <ImageButton
             android:id="@+id/buttonDislike"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             android:src="@drawable/ic_thumb_down"
             android:scaleType="centerInside"
             android:background="?attr/selectableItemBackgroundBorderless"

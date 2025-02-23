@@ -75,6 +75,110 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         "Conceiving>", "Refining>", "Controlling>", "Realizing>", "Evolving>"
     )
 
+    val greetings = listOf(
+        "Hi, I'm ELE!",
+        "Hello, I'm ELE!",
+        "Greetings from ELE!",
+        "Hey there, I'm ELE!",
+        "Welcome, I'm ELE!",
+        "Hiya, I'm ELE!",
+        "Good day, I'm ELE!",
+        "Howdy, I'm ELE!",
+        "Salutations, I'm ELE!",
+        "Hello there, I'm ELE!",
+        "Hi there, I'm ELE!",
+        "Greetings, I'm ELE!",
+        "Hey, I'm ELE!",
+        "Welcome aboard, I'm ELE!",
+        "Hey friend, I'm ELE!",
+        "Hi, it's ELE here!",
+        "Hello, this is ELE!",
+        "Good to see you, I'm ELE!",
+        "Nice to meet you, I'm ELE!",
+        "Yo, I'm ELE!",
+        "What's up? I'm ELE!",
+        "Hey, it's ELE!",
+        "Hi, ELE at your service!",
+        "Hello, ELE here!",
+        "Hey there, it's ELE!",
+        "Hi, welcome from ELE!",
+        "Hello and welcome, I'm ELE!",
+        "Hi, I’m ELE, nice to meet you!",
+        "Hey, I'm ELE, how can I help?",
+        "Hello, I'm ELE, glad you're here!",
+        "Greetings, I'm ELE, at your service!",
+        "Hi, I'm ELE. Let's chat!",
+        "Hey there, I'm ELE and ready to assist!",
+        "Hello, I'm ELE. How are you?",
+        "Hi, I'm ELE – your AI companion!",
+        "Hey, it's ELE, happy to see you!",
+        "Greetings from ELE – let's get started!",
+        "Hi, I'm ELE. What's on your mind?",
+        "Hello, I'm ELE. Let's talk!",
+        "Hey, I'm ELE, here to help!",
+        "Hi, I'm ELE. Let's collaborate!",
+        "Greetings, I'm ELE, ready for action!",
+        "Hello, I'm ELE, your friendly assistant!",
+        "Hey there, I'm ELE – let's do this!",
+        "Hi, I'm ELE – here to make your day!",
+        "Hello, I'm ELE – how can I assist you today?",
+        "Hey, I'm ELE, your AI helper!",
+        "Hi, I'm ELE – let's build something great!",
+        "Greetings, I'm ELE – excited to help!",
+        "Hello, I'm ELE – your personal assistant!",
+        "Hey there, I'm ELE – ready when you are!",
+        "Hi, I'm ELE – your AI partner!",
+        "Hello, I'm ELE – here for you!",
+        "Hey, it's ELE – let's get to work!",
+        "Hi, I'm ELE – at your service!",
+        "Greetings, I'm ELE – how can I help?",
+        "Hello, I'm ELE – let's make things happen!",
+        "Hey, I'm ELE – here to support you!",
+        "Hi, I'm ELE – let's get started together!",
+        "Hello, I'm ELE – glad you're here!",
+        "Hey there, I'm ELE – ready to assist!",
+        "Hi, I'm ELE – let's chat and collaborate!",
+        "Hello, I'm ELE – your digital assistant!",
+        "Hey, I'm ELE – your AI buddy!",
+        "Hi, I'm ELE – excited to work with you!",
+        "Hello, I'm ELE – let's explore together!",
+        "Hey, it's ELE – your friendly AI!",
+        "Hi, I'm ELE – let's make magic happen!",
+        "Hello, I'm ELE – how can I support you today?",
+        "Hey there, I'm ELE – ready to get things done!",
+        "Hi, I'm ELE – your efficient assistant!",
+        "Hello, I'm ELE – let's achieve great things!",
+        "Hey, I'm ELE – let's innovate together!",
+        "Hi, I'm ELE – here to guide you!",
+        "Hello, I'm ELE – your tech companion!",
+        "Hey, I'm ELE – let's revolutionize together!",
+        "Hi, I'm ELE – ready to empower your team!",
+        "Hello, I'm ELE – your intelligent assistant!",
+        "Hey there, I'm ELE – let's create something amazing!",
+        "Hi, I'm ELE – here to fuel your ideas!",
+        "Hello, I'm ELE – your AI partner in innovation!",
+        "Hey, I'm ELE – let's inspire greatness!",
+        "Hi, I'm ELE – ready to assist with knowledge!",
+        "Hello, I'm ELE – your guide to smarter work!",
+        "Hey there, I'm ELE – here to boost your productivity!",
+        "Hi, I'm ELE – let’s unlock your team’s potential!",
+        "Hello, I'm ELE – here to enhance collaboration!",
+        "Hey, I'm ELE – your key to a smarter workflow!",
+        "Hi, I'm ELE – let’s transform your ideas into action!",
+        "Hello, I'm ELE – let’s build a smarter future!",
+        "Hey there, I'm ELE – your assistant for success!",
+        "Hi, I'm ELE – here to optimize your knowledge!",
+        "Hello, I'm ELE – your partner in innovation!",
+        "Hey, I'm ELE – here to empower your creativity!",
+        "Hi, I'm ELE – let’s make your vision a reality!",
+        "Hello, I'm ELE – your tool for team success!",
+        "Hey there, I'm ELE – ready to drive progress!",
+        "Hi, I'm ELE – your gateway to AI-powered insights!",
+        "Hello, I'm ELE – here to elevate your teamwork!",
+        "Hey, I'm ELE – let’s achieve excellence together!"
+    )
+
+
 
     private var loadingWordsJob: Job? = null
 
@@ -273,7 +377,7 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 response.body()?.let { assistantResponse ->
                     Log.d("ChatActivity", "Assistant updated with vector store! Response id: ${assistantResponse.id}")
                     runOnUiThread {
-                        Toast.makeText(this@ChatActivity, "Ready to chat!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@ChatActivity, greetings.random(), Toast.LENGTH_LONG).show()
                     }
                 }
             } else {
@@ -302,7 +406,7 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     /**
      * Sends a user message using the OpenAI Assistants API workflow.
      * The user's message is already added to the UI locally.
-     * The conversation context (last 5 messages) is built and appended.
+     * The conversation context (last n messages) is built and appended.
      */
     private suspend fun sendMessageThroughAssistant(userMessage: String) {
         val config = withContext(Dispatchers.IO) { db.apiConfigDao().getConfig() }
