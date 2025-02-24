@@ -16,7 +16,11 @@ import com.ibsoft.ele.adapter.AssistantAdapter
 import com.ibsoft.ele.databinding.ActivityAssistantsBinding
 import com.ibsoft.ele.db.AppDatabase
 import com.ibsoft.ele.model.AssistantResponse
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -34,32 +38,30 @@ class AssistantsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d("AssistantsActivity", "onCreate called")
         binding = ActivityAssistantsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Set light mode and update the action bar title.
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         supportActionBar?.title = "Assistants"
 
-        // Initialize database.
         db = AppDatabase.getDatabase(this)
 
-        // Initialize adapter; the adapter’s callbacks for delete and copy are defined here.
+        // Setup adapter with delete and copy callbacks.
         assistantAdapter = AssistantAdapter(
             assistantList,
             onDeleteClick = { assistant ->
-                // Instead of calling deleteAssistant directly, show a confirmation dialog:
                 showDeleteConfirmationDialog(assistant)
             },
             onCopyClick = { id ->
                 copyToClipboard(id)
             }
         )
-        binding.assistantsRecyclerView.layoutManager = LinearLayoutManager(this)
-        binding.assistantsRecyclerView.adapter = assistantAdapter
+        binding.assistantsRecyclerView.apply {
+            layoutManager = LinearLayoutManager(this@AssistantsActivity)
+            adapter = assistantAdapter
+        }
 
-        // Setup Retrofit with a logging interceptor.
+        // Setup Retrofit with logging.
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
@@ -73,20 +75,19 @@ class AssistantsActivity : AppCompatActivity() {
             .build()
         api = retrofit.create(OpenAIAssistantApi::class.java)
 
-        // Load assistants from API.
-        loadAssistants()
-
-        // Set click listener on the "Add Assistant" button.
-        binding.buttonAddAssistant.setOnClickListener {
-            // Launch CreateAssistantActivity to create a new assistant.
-            startActivity(Intent(this, CreateAssistantActivity::class.java))
-        }
-
-        // Set click listener on the "Refresh Assistants" button.
+        // Wire up the Refresh button.
         binding.buttonRefreshAssistants.setOnClickListener {
             Toast.makeText(this, "Refreshing...", Toast.LENGTH_SHORT).show()
             loadAssistants()
         }
+
+        // Wire up the "Add Assistant" button.
+        binding.buttonAddAssistant.setOnClickListener {
+            startActivity(Intent(this, CreateAssistantActivity::class.java))
+        }
+
+        Toast.makeText(this, "Refreshing vector stores...", Toast.LENGTH_SHORT).show()
+        loadAssistants()
     }
 
     /**
@@ -98,7 +99,7 @@ class AssistantsActivity : AppCompatActivity() {
             .setMessage("Are you sure you want to delete this assistant?")
             .setPositiveButton("Yes") { dialog, _ ->
                 dialog.dismiss()
-                // Proceed with deletion
+                Toast.makeText(this, "Deleting assistant...", Toast.LENGTH_SHORT).show()
                 uiScope.launch { deleteAssistant(assistant) }
             }
             .setNegativeButton("No") { dialog, _ ->
@@ -108,6 +109,30 @@ class AssistantsActivity : AppCompatActivity() {
             .show()
     }
 
+    /**
+     * Retrieves the API auth header from the stored configuration.
+     * If the API key is missing, it shows a toast advising the user to update settings.
+     */
+    private suspend fun getAuthHeader(): String? {
+        val config = withContext(Dispatchers.IO) { db.apiConfigDao().getConfig() }
+        return if (config != null && config.openaiApiKey.isNotBlank()) {
+            "Bearer ${config.openaiApiKey}"
+        } else {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    this@AssistantsActivity,
+                    "API configuration is missing. Please update your settings.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            null
+        }
+    }
+
+    /**
+     * Loads all assistants from the API.
+     * If a 401 error is returned, advises the user that the API key is invalid.
+     */
     private fun loadAssistants() {
         if (!isNetworkAvailable()) {
             Toast.makeText(
@@ -120,16 +145,7 @@ class AssistantsActivity : AppCompatActivity() {
         uiScope.launch {
             assistantList.clear()
             Log.d("AssistantsActivity", "Loading assistants")
-            val config = withContext(Dispatchers.IO) { db.apiConfigDao().getConfig() }
-            if (config == null) {
-                Toast.makeText(
-                    this@AssistantsActivity,
-                    "It seems the API configuration is missing. Please update your settings.",
-                    Toast.LENGTH_SHORT
-                ).show()
-                return@launch
-            }
-            val authHeader = "Bearer " + config.openaiApiKey
+            val authHeader = getAuthHeader() ?: return@launch
             try {
                 val response = withContext(Dispatchers.IO) { api.listAssistants(authHeader) }
                 if (response.isSuccessful) {
@@ -145,11 +161,19 @@ class AssistantsActivity : AppCompatActivity() {
                         ).show()
                     }
                 } else {
-                    Toast.makeText(
-                        this@AssistantsActivity,
-                        "We couldn't load your assistants. Check your settings.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    if (response.code() == 401) {
+                        Toast.makeText(
+                            this@AssistantsActivity,
+                            "Invalid API key. Please update your settings.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        Toast.makeText(
+                            this@AssistantsActivity,
+                            "We couldn't load your assistants. Check your settings.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("AssistantsActivity", "Error loading assistants: ${e.message}")
@@ -162,6 +186,10 @@ class AssistantsActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Deletes the specified assistant via the API and refreshes the list.
+     * If a 401 error is returned, advises the user that the API key is invalid.
+     */
     private suspend fun deleteAssistant(assistant: AssistantResponse) {
         if (!isNetworkAvailable()) {
             Toast.makeText(
@@ -191,14 +219,21 @@ class AssistantsActivity : AppCompatActivity() {
                 ).show()
                 loadAssistants()
             } else {
-                Toast.makeText(
-                    this,
-                    "We couldn't delete your assistant right now. Please try again later.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                if (response.code() == 401) {
+                    Toast.makeText(
+                        this,
+                        "Invalid API key. Please update your settings.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        this,
+                        "We couldn't delete your assistant right now. Please try again later.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         } catch (e: Exception) {
-            Log.e("AssistantsActivity", "Error deleting assistant: ${e.message}")
             Toast.makeText(
                 this,
                 "An error occurred while deleting your assistant. Please try again later.",
@@ -207,6 +242,9 @@ class AssistantsActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Copies a given string (assistant ID) to the clipboard.
+     */
     private fun copyToClipboard(text: String) {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("Assistant ID", text)

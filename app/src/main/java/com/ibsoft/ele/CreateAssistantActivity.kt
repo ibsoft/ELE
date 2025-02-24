@@ -100,14 +100,15 @@ class CreateAssistantActivity : AppCompatActivity() {
 
             // Retrieve API configuration from the database.
             val config = withContext(Dispatchers.IO) { db.apiConfigDao().getConfig() }
-            if (config == null) {
+            if (config == null || config.openaiApiKey.trim().isEmpty()) {
                 Toast.makeText(
                     this@CreateAssistantActivity,
-                    "It seems your API configuration is missing. Please update it in Settings.",
+                    "API key is missing. Please enter a valid API key in Settings.",
                     Toast.LENGTH_LONG
                 ).show()
                 return@launch
             }
+
             val authHeader = "Bearer " + config.openaiApiKey
             try {
                 val response = withContext(Dispatchers.IO) { api.createAssistant(authHeader, request) }
@@ -120,11 +121,19 @@ class CreateAssistantActivity : AppCompatActivity() {
                     ).show()
                     finish() // Close the activity after successful creation.
                 } else {
-                    Toast.makeText(
-                        this@CreateAssistantActivity,
-                        "We couldn't create your assistant at the moment. Please try again later.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    if (response.code() == 401) {
+                        Toast.makeText(
+                            this@CreateAssistantActivity,
+                            "Invalid API key. Please enter a valid API key in Settings.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        Toast.makeText(
+                            this@CreateAssistantActivity,
+                            "We couldn't create your assistant at the moment. Please try again later.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             } catch (e: Exception) {
                 Toast.makeText(

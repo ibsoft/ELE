@@ -37,7 +37,24 @@
             android:id="@+id/textApiConfigTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="API Configuration"
+            android:text="API Configuration (Intructions)"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:layout_marginTop="16dp" />
+
+        <!-- Instructional Text -->
+        <TextView
+            android:id="@+id/textInstructions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1. Enter your CHATGPT API Key\n2. (SAVE) \n3. Go to menu \n 4. Create an Assistant from the settings menu and paste the Assistant ID to settings. \n5. (SAVE) \n6. Go to menu \n7. Create a Vector Store from the settings menu and paste the Vector Store ID here. \n8. (SAVE)\n9. Create a conversation and start chatting."
+            android:textAppearance="?attr/textAppearanceBody1"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/textApiConfigTitleAPI"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CHATGPT API KEY"
             android:textAppearance="?attr/textAppearanceHeadline6"
             android:layout_marginTop="16dp" />
         <EditText
@@ -45,16 +62,34 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Enter OpenAI API Key" />
+
+        <TextView
+            android:id="@+id/textAssistantTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Assistant ID"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:layout_marginTop="16dp" />
+
         <EditText
             android:id="@+id/editTextAssistantId"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Enter Assistant ID (optional)" />
+            android:hint="Enter Assistant ID" />
+
+        <TextView
+            android:id="@+id/textApiVectorTitleAPI"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Vector ID"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:layout_marginTop="16dp" />
+
         <EditText
             android:id="@+id/editTextVectorstoreId"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Enter Vectorstore ID (optional)" />
+            android:hint="Enter Vectorstore ID" />
 
         <!-- Conversation Context Window Setting -->
         <TextView

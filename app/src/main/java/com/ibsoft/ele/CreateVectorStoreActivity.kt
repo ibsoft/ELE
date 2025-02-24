@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -81,6 +82,15 @@ class CreateVectorStoreActivity : AppCompatActivity() {
                 ).show()
                 return@launch
             }
+            // Check if API key is missing.
+            if (config.openaiApiKey.trim().isEmpty()) {
+                Toast.makeText(
+                    this@CreateVectorStoreActivity,
+                    "API key is missing. Please enter a valid API key in Settings.",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@launch
+            }
 
             // Check for an active internet connection.
             if (!isNetworkAvailable()) {
@@ -94,7 +104,7 @@ class CreateVectorStoreActivity : AppCompatActivity() {
 
             val authHeader = "Bearer " + config.openaiApiKey
             try {
-                val response = withContext(Dispatchers.IO) {
+                val response: Response<VectorStoreResponse> = withContext(Dispatchers.IO) {
                     api.createVectorStore(authHeader, request)
                 }
                 if (response.isSuccessful) {
@@ -106,11 +116,19 @@ class CreateVectorStoreActivity : AppCompatActivity() {
                     ).show()
                     finish() // Close the activity after successful creation.
                 } else {
-                    Toast.makeText(
-                        this@CreateVectorStoreActivity,
-                        "Failed to create vector store. Please try again later.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    if (response.code() == 401) {
+                        Toast.makeText(
+                            this@CreateVectorStoreActivity,
+                            "Invalid API key. Please enter a valid API key in Settings.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        Toast.makeText(
+                            this@CreateVectorStoreActivity,
+                            "Failed to create vector store. Please try again later.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             } catch (e: Exception) {
                 Toast.makeText(

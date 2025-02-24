@@ -45,7 +45,15 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private val uiScope = CoroutineScope(Dispatchers.Main + activityJob)
     private lateinit var api: OpenAIAssistantApi
 
-    // File picker launcher for any file type
+    // Global flag representing whether the configuration is validated via API.
+    private var configValid: Boolean = false
+    // Flag to ensure the error message is inserted only once.
+    private var hasShownConfigError = false
+
+    // Job for random word updates.
+    private var loadingWordsJob: Job? = null
+
+    // File picker launcher for any file type.
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
             uiScope.launch { processFileUpload(it) }
@@ -53,7 +61,7 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private val randomWords = listOf(
-        "Okay","Ok","Reasoning>", "Thinking>", "Analyzing>", "Processing>", "Computing>",
+        "Okay", "Ok", "Reasoning>", "Thinking>", "Analyzing>", "Processing>", "Computing>",
         "Evaluating>", "Synthesizing>", "Formulating>", "Deciding>", "Conceptualizing>",
         "Imagining>", "Predicting>", "Investigating>", "Exploring>", "Innovating>",
         "Almost there>", "Designing>", "Solving>", "Examining>", "Reviewing>",
@@ -178,36 +186,81 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         "Hey, I'm ELE – let’s achieve excellence together!"
     )
 
-
-
-    private var loadingWordsJob: Job? = null
-
     private fun startRandomWordCycle() {
         loadingWordsJob = CoroutineScope(Dispatchers.Main).launch {
             while (isActive) {
                 binding.loadingRandomText.text = randomWords.random()
-                delay(1100L)  // change word every second
+                delay(1100L)
             }
         }
     }
 
+    /**
+     * Hides the loading animation and stops the random text updates.
+     */
+    private fun hideLoadingViews() {
+        binding.loadingImageView.visibility = View.GONE
+        binding.loadingContainer.visibility = View.GONE
+        binding.loadingRandomText.visibility = View.GONE
+        loadingWordsJob?.cancel()
+    }
+
+    /**
+     * Checks the configuration and sets the enabled state of the Send and Upload buttons.
+     * This is called only after the API validation finishes.
+     */
+    private fun updateButtonState() {
+        uiScope.launch {
+            val config = withContext(Dispatchers.IO) { db.apiConfigDao().getConfig() }
+            withContext(Dispatchers.Main) {
+                val isValid = config != null &&
+                        config.assistantId.isNotEmpty() &&
+                        config.vectorstoreId.isNotEmpty() &&
+                        configValid
+                binding.buttonSend.isEnabled = isValid
+                binding.buttonUpload.isEnabled = isValid
+                if (!isValid && !hasShownConfigError) {
+                    showConfigError()
+                }
+            }
+        }
+    }
+
+    /**
+     * Inserts a bot message with the configuration error.
+     * This message is inserted only once.
+     */
+    private fun showConfigError() {
+        val errorMessage = "Configuration missing or invalid! Check your Settings for the correct Vector Store ID and Assistant ID. Please create them if you haven't already, then copy the corresponded ID's to **Settings** and save."
+        if (!hasShownConfigError) {
+            val fakeMsg = Message(
+                conversationId = conversationId,
+                sender = "bot",
+                message = errorMessage,
+                timestamp = System.currentTimeMillis()
+            )
+            CoroutineScope(Dispatchers.IO).launch {
+                db.messageDao().insertMessage(fakeMsg)
+            }
+            messageList.add(fakeMsg)
+            runOnUiThread {
+                messageAdapter.notifyItemInserted(messageList.size - 1)
+                binding.messageRecyclerView.scrollToPosition(messageList.size - 1)
+            }
+            hasShownConfigError = true
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityChatBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Force light mode by default (can be changed via settings)
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-
-        // Retrieve conversationId from the intent
         conversationId = intent.getLongExtra("conversationId", 0)
-
-        // Initialize the database and TextToSpeech engine
         db = AppDatabase.getDatabase(this)
         tts = TextToSpeech(this, this)
 
-        // Set up the RecyclerView and its adapter (with like/dislike functionality)
         messageAdapter = MessageAdapter(
             messages = messageList,
             onCopyClick = { text ->
@@ -240,12 +293,11 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         binding.messageRecyclerView.adapter = messageAdapter
 
         loadMessages()
+        // Do not call updateButtonState() immediately; wait for API validation.
 
-        // Modify the send button so the user's message appears immediately.
         binding.buttonSend.setOnClickListener {
             val text = binding.editTextMessage.text.toString().trim()
             if (text.isNotEmpty()) {
-                // Immediately insert the user's message into the UI and persist it.
                 val userLocalMsg = Message(
                     conversationId = conversationId,
                     sender = "user",
@@ -261,32 +313,33 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 messageAdapter.notifyItemInserted(messageList.size - 1)
                 binding.messageRecyclerView.scrollToPosition(messageList.size - 1)
                 binding.editTextMessage.text.clear()
-
-                // Now send the message via API (this will eventually add the assistant's reply)
                 uiScope.launch { sendMessageThroughAssistant(text) }
             }
         }
 
-        // Button to trigger file upload
         binding.buttonUpload.setOnClickListener {
-            filePickerLauncher.launch("*/*")
+            uiScope.launch {
+                val config = withContext(Dispatchers.IO) { db.apiConfigDao().getConfig() }
+                if (config == null || config.assistantId.isEmpty() || config.vectorstoreId.isEmpty()) {
+                    withContext(Dispatchers.Main) { showConfigError() }
+                } else {
+                    filePickerLauncher.launch("*/*")
+                }
+            }
         }
 
-        // Load an animated GIF into the loadingImageView
         Glide.with(this)
             .asGif()
             .load(R.drawable.loading_animation)
             .into(binding.loadingImageView)
 
-
-        // Set up Retrofit with logging interceptor and increased timeouts.
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
         val okHttpClient = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
             .addInterceptor(loggingInterceptor)
             .build()
         val retrofit = Retrofit.Builder()
@@ -296,7 +349,7 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             .build()
         api = retrofit.create(OpenAIAssistantApi::class.java)
 
-        // Update the assistant with the vector store configuration before chat begins.
+        // Validate configuration by updating the assistant.
         uiScope.launch {
             val config = withContext(Dispatchers.IO) { db.apiConfigDao().getConfig() }
             if (config != null &&
@@ -311,8 +364,18 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 )
             } else {
                 Log.d("ChatActivity", "Vector store or API configuration not set.")
+                runOnUiThread {
+                    binding.buttonSend.isEnabled = false
+                    binding.buttonUpload.isEnabled = false
+                    showConfigError()
+                }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Optionally, re-run API validation here if needed.
     }
 
     private fun loadMessages() {
@@ -333,24 +396,13 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         clipboard.setPrimaryClip(clip)
     }
 
-    /**
-     * Builds a conversation context string from the last 3 messages.
-     */
     private suspend fun buildConversationContext(): String = withContext(Dispatchers.IO) {
-        // Retrieve the context window setting from SharedPreferences ("context_window").
-        // Default to "1" if not set.
         val sharedPref = getSharedPreferences("UserSettings", Context.MODE_PRIVATE)
         val contextWindowString = sharedPref.getString("context_window", "3")
         val contextWindow = contextWindowString?.toIntOrNull() ?: 3
-
-        // Retrieve all messages for the conversation and sort them by timestamp.
         val allMessages = db.messageDao().getMessagesForConversation(conversationId)
         val sortedMessages = allMessages.sortedBy { it.timestamp }
-
-        // Take the last 'contextWindow' messages.
         val lastMessages = sortedMessages.takeLast(contextWindow)
-
-        // Build a context string with each message prefixed by its sender.
         lastMessages.joinToString(separator = "\n") { msg ->
             when (msg.sender.lowercase(Locale.getDefault())) {
                 "user" -> "User: ${msg.message}"
@@ -360,11 +412,6 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-
-
-    /**
-     * Updates the assistant with the specified vector store configuration.
-     */
     private suspend fun updateAssistantWithVectorStore(vectorStoreId: String, apiKey: String, assistantId: String) {
         try {
             val request = UpdateAssistantRequest(
@@ -373,74 +420,26 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val response = withContext(Dispatchers.IO) {
                 api.updateAssistant(assistantId, "Bearer $apiKey", request)
             }
+            configValid = response.isSuccessful
             if (response.isSuccessful) {
-                response.body()?.let { assistantResponse ->
-                    Log.d("ChatActivity", "Assistant updated with vector store! Response id: ${assistantResponse.id}")
-                    runOnUiThread {
-                        Toast.makeText(this@ChatActivity, greetings.random(), Toast.LENGTH_LONG).show()
-                    }
+                runOnUiThread {
+                    Toast.makeText(this@ChatActivity, greetings.random(), Toast.LENGTH_LONG).show()
                 }
             } else {
-                // Read the error message from the response error body.
-                val errorBodyString = response.errorBody()?.string() ?: "Unknown error"
-                Log.e("ChatActivity", "Error updating assistant: $errorBodyString")
-                if (errorBodyString.contains("No vector store found", ignoreCase = true)) {
-                    runOnUiThread {
-                        Toast.makeText(this@ChatActivity, "Check your settings", Toast.LENGTH_LONG).show()
-                    }
-                } else {
-                    runOnUiThread {
-                        Toast.makeText(this@ChatActivity, "Check your settings", Toast.LENGTH_LONG).show()
-                    }
-                }
+                runOnUiThread { showConfigError() }
             }
         } catch (e: Exception) {
             Log.e("ChatActivity", "Exception updating assistant: ${e.message}")
-            runOnUiThread {
-                Toast.makeText(this@ChatActivity, "Check your settings.", Toast.LENGTH_LONG).show()
-            }
+            configValid = false
+            runOnUiThread { showConfigError() }
         }
+        updateButtonState()
     }
 
-
-    /**
-     * Sends a user message using the OpenAI Assistants API workflow.
-     * The user's message is already added to the UI locally.
-     * The conversation context (last n messages) is built and appended.
-     */
     private suspend fun sendMessageThroughAssistant(userMessage: String) {
         val config = withContext(Dispatchers.IO) { db.apiConfigDao().getConfig() }
-        if (config == null) {
-            withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    this@ChatActivity,
-                    "API configuration is missing. Please configure it in Settings.",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-            return
-        }
-        if (config.assistantId.isEmpty() || config.vectorstoreId.isEmpty()) {
-            withContext(Dispatchers.Main) {
-                // Insert a fake assistant message prompting the user to configure settings.
-                val fakeMsg = Message(
-                    conversationId = conversationId,
-                    sender = "bot",
-                    message = "Configuration missing! Check your Settings",
-                    timestamp = System.currentTimeMillis()
-                )
-                CoroutineScope(Dispatchers.IO).launch {
-                    db.messageDao().insertMessage(fakeMsg)
-                }
-                messageList.add(fakeMsg)
-                messageAdapter.notifyItemInserted(messageList.size - 1)
-                binding.messageRecyclerView.scrollToPosition(messageList.size - 1)
-                Toast.makeText(
-                    this@ChatActivity,
-                    "Assistant config is missing. Please check your settings.",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
+        if (config == null || config.assistantId.isEmpty() || config.vectorstoreId.isEmpty() || !configValid) {
+            withContext(Dispatchers.Main) { showConfigError() }
             return
         }
         val authHeader = "Bearer " + config.openaiApiKey
@@ -451,59 +450,38 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             withContext(Dispatchers.Main) {
                 binding.loadingImageView.visibility = View.VISIBLE
                 binding.loadingContainer.visibility = View.VISIBLE
-                binding.loadingImageView.visibility = View.VISIBLE
                 binding.loadingRandomText.visibility = View.VISIBLE
-                startRandomWordCycle()  // Picks a random word
+                startRandomWordCycle()
             }
-
-
-            // Step 1: Create a new thread
             val threadResponse = withContext(Dispatchers.IO) { api.createThread(authHeader, CreateThreadRequest()) }
             val threadId = threadResponse.id
             Log.d("ChatActivity", "Created thread with id: $threadId")
-
-            // Step 2: Optionally send a custom prompt
             val sharedPrefs = getSharedPreferences("UserSettings", MODE_PRIVATE)
             val customPrompt = sharedPrefs.getString("custom_user_prompt", null)
             if (!customPrompt.isNullOrBlank()) {
                 val promptMsgReq = MessageRequest(role = "user", content = customPrompt)
-                // Call API to add the prompt but do not update UI since the user message is already shown.
                 withContext(Dispatchers.IO) {
                     api.addMessageToThread(threadId, authHeader, promptMsgReq)
                 }
                 Log.d("ChatActivity", "Added custom prompt")
             }
-
-            // Step 3: Build conversation context (last 5 messages) and send the user's message via API.
             val conversationContext = buildConversationContext()
             val fullPrompt = "$conversationContext\nUser: $userMessage"
             val msgReq = MessageRequest(role = "user", content = fullPrompt)
             withContext(Dispatchers.IO) { api.addMessageToThread(threadId, authHeader, msgReq) }
             Log.d("ChatActivity", "Sent user message via API.")
-
-            // Step 4: Start the assistant run
             val runReq = RunRequest(assistant_id = assistantId)
-            val runResp = withContext(Dispatchers.IO) {
-                api.runAssistant(threadId, authHeader, runReq)
-            }
+            val runResp = withContext(Dispatchers.IO) { api.runAssistant(threadId, authHeader, runReq) }
             val runId = runResp.id
             Log.d("ChatActivity", "Started assistant run; run id: $runId")
-
-            // Step 5: Poll for run completion
             var runStatus: String
             do {
                 delay(1000)
-                val statusResp = withContext(Dispatchers.IO) {
-                    api.getRunStatus(threadId, runId, authHeader)
-                }
+                val statusResp = withContext(Dispatchers.IO) { api.getRunStatus(threadId, runId, authHeader) }
                 runStatus = statusResp.status
                 Log.d("ChatActivity", "Run status: $runStatus")
             } while (runStatus != "completed")
-
-            // Step 6: Retrieve the assistant's reply
-            val threadMessagesResp = withContext(Dispatchers.IO) {
-                api.getThreadMessages(threadId, authHeader)
-            }
+            val threadMessagesResp = withContext(Dispatchers.IO) { api.getThreadMessages(threadId, authHeader) }
             val messagesFromApi = threadMessagesResp.messages ?: emptyList()
             val assistantMessage = messagesFromApi
                 .filter { it.role.lowercase(Locale.getDefault()) == "assistant" }
@@ -511,17 +489,13 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val assistantReply = assistantMessage?.content?.joinToString(" ") { it.text.value }
                 ?: "No assistant response found."
             Log.d("ChatActivity", "Assistant reply: $assistantReply")
-
-            // Step 7: Save the assistant reply locally and calculate response time
             val botMsg = Message(
                 conversationId = conversationId,
                 sender = "bot",
                 message = assistantReply,
                 timestamp = System.currentTimeMillis()
             )
-            val lastUserMessageTimestamp = messageList.lastOrNull {
-                it.sender.equals("user", ignoreCase = true)
-            }?.timestamp
+            val lastUserMessageTimestamp = messageList.lastOrNull { it.sender.equals("user", ignoreCase = true) }?.timestamp
             if (lastUserMessageTimestamp != null) {
                 val rawResponseTime = (botMsg.timestamp - lastUserMessageTimestamp) / 1000
                 botMsg.responseTime = rawResponseTime
@@ -532,45 +506,27 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             withContext(Dispatchers.Main) {
                 messageAdapter.notifyItemInserted(messageList.size - 1)
                 binding.messageRecyclerView.scrollToPosition(messageList.size - 1)
-                binding.loadingImageView.visibility = View.GONE
-                binding.loadingRandomText.visibility = View.GONE
+                hideLoadingViews()
             }
         } catch (e: Exception) {
             e.printStackTrace()
             withContext(Dispatchers.Main) {
-                binding.loadingImageView.visibility = View.GONE
-                Toast.makeText(
-                    this@ChatActivity,
-                    "Please check again your settings.",
-                    Toast.LENGTH_LONG
-                ).show()
+                hideLoadingViews()
+                Toast.makeText(this@ChatActivity, "Please check again your settings.", Toast.LENGTH_LONG).show()
             }
         }
     }
 
-    /**
-     * Helper function to format the response time.
-     */
     private fun formatResponseTime(seconds: Long): String {
         return if (seconds < 60) {
             "Reasoned for $seconds seconds >"
         } else {
             val minutes = seconds / 60
             val remainingSeconds = seconds % 60
-            if (remainingSeconds == 0L) "Reasoned for $minutes minutes >"
-            else "Reasoned for $minutes minutes $remainingSeconds seconds >"
+            if (remainingSeconds == 0L) "Reasoned for $minutes minutes >" else "Reasoned for $minutes minutes $remainingSeconds seconds >"
         }
     }
 
-    /**
-     * Processes file upload:
-     * 1. Extracts the file name.
-     * 2. Uploads the file content via a multipart request with progress.
-     * 3. Waits for the file to be ready.
-     * 4. Registers the file with the vector store.
-     * 5. Saves the file name and returned file ID to the database.
-     * 6. Posts an assistant message: "File received: [filename]".
-     */
     private suspend fun processFileUpload(fileUri: Uri) {
         val fileName = getFileName(fileUri) ?: "uploaded_file"
         Log.d("ChatActivity", "Original file name: $fileName")
@@ -582,36 +538,21 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         runOnUiThread { binding.progressBarUpload.visibility = View.GONE }
         if (validFileId == null) {
             runOnUiThread {
-                Toast.makeText(
-                    this@ChatActivity,
-                    "We couldn't upload your file. Please try again.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(this@ChatActivity, "We couldn't upload your file. Please try again.", Toast.LENGTH_SHORT).show()
             }
             return
         }
-        runOnUiThread {
-            Toast.makeText(this, "File uploaded successfully!", Toast.LENGTH_SHORT).show()
-        }
+        runOnUiThread { Toast.makeText(this, "File uploaded successfully!", Toast.LENGTH_SHORT).show() }
         Log.d("ChatActivity", "File uploaded. Received file id: $validFileId")
         waitForFileToBeReady(validFileId)
-        // Attempt to register the file
         val registrationSuccess = registerFileToVectorStore(validFileId)
         if (!registrationSuccess) {
             runOnUiThread {
-                Toast.makeText(
-                    this@ChatActivity,
-                    "File registration failed. Your file was not saved.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(this@ChatActivity, "File registration failed. Your file was not saved.", Toast.LENGTH_SHORT).show()
             }
             return
         }
-        // Save file info to DB only if registration succeeded
-        withContext(Dispatchers.IO) {
-            db.vectorFileDao().insertVectorFile(VectorFile(fileName = fileName, fileId = validFileId))
-        }
-        // Post an assistant message about the received file
+        withContext(Dispatchers.IO) { db.vectorFileDao().insertVectorFile(VectorFile(fileName = fileName, fileId = validFileId)) }
         uiScope.launch {
             val messageText = "I've received your file: $fileName."
             val botMsg = Message(
@@ -630,9 +571,6 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    /**
-     * Uploads file content with a progress callback.
-     */
     private suspend fun uploadFileContent(fileUri: Uri): String? = withContext(Dispatchers.IO) {
         try {
             val fileName = getFileName(fileUri) ?: "uploaded_file"
@@ -666,40 +604,22 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         } catch (e: Exception) {
             Log.e("ChatActivity", "Exception uploading file: ${e.message}")
             withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    this@ChatActivity,
-                    "We couldn't upload your file. Please check your connection and try again.",
-                    Toast.LENGTH_LONG
-                ).show()
+                Toast.makeText(this@ChatActivity, "We couldn't upload your file. Please check your connection and try again.", Toast.LENGTH_LONG).show()
             }
             null
         }
     }
 
-    /**
-     * Pretend to wait for the file to become ready.
-     */
     private suspend fun waitForFileToBeReady(fileId: String) {
         delay(5000)
         Log.d("ChatActivity", "File $fileId is now ready.")
-        runOnUiThread {
-            Toast.makeText(this, "File is ready to be registered.", Toast.LENGTH_SHORT).show()
-        }
+        runOnUiThread { Toast.makeText(this, "File is ready to be registered.", Toast.LENGTH_SHORT).show() }
     }
 
-    /**
-     * Registers the file with the vector store.
-     */
     private suspend fun registerFileToVectorStore(validFileId: String): Boolean {
         val config = withContext(Dispatchers.IO) { db.apiConfigDao().getConfig() }
         if (config == null) {
-            runOnUiThread {
-                Toast.makeText(
-                    this@ChatActivity,
-                    "API config missing. Please configure it in Settings.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            runOnUiThread { showConfigError() }
             return false
         }
         val authHeader = "Bearer " + config.openaiApiKey
@@ -710,30 +630,20 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 api.createVectorStoreFile(vectorStoreId, authHeader, request)
             }
             if (response.isSuccessful) {
-                runOnUiThread {
-                    Toast.makeText(this@ChatActivity, "File attached successfully!", Toast.LENGTH_LONG).show()
-                }
+                runOnUiThread { Toast.makeText(this@ChatActivity, "File attached successfully!", Toast.LENGTH_LONG).show() }
                 true
             } else {
                 Log.e("ChatActivity", "Error registering file: HTTP ${response.code()}")
                 response.errorBody()?.close()
                 runOnUiThread {
-                    Toast.makeText(
-                        this@ChatActivity,
-                        "Unable to attach the file right now. Please try again later.",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    Toast.makeText(this@ChatActivity, "Unable to attach the file right now. Please try again later.", Toast.LENGTH_LONG).show()
                 }
                 false
             }
         } catch (e: Exception) {
             Log.e("ChatActivity", "Exception registering file: ${e.message}")
             runOnUiThread {
-                Toast.makeText(
-                    this@ChatActivity,
-                    "We had trouble attaching the file. Please try again.",
-                    Toast.LENGTH_LONG
-                ).show()
+                Toast.makeText(this@ChatActivity, "We had trouble attaching the file. Please try again.", Toast.LENGTH_LONG).show()
             }
             false
         }
@@ -757,11 +667,7 @@ class ChatActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (status == TextToSpeech.SUCCESS) {
             tts.language = Locale.US
         } else {
-            Toast.makeText(
-                this,
-                "Could not initialize text-to-speech. Please try again.",
-                Toast.LENGTH_SHORT
-            ).show()
+            Toast.makeText(this, "Could not initialize text-to-speech. Please try again.", Toast.LENGTH_SHORT).show()
         }
     }
 

@@ -85,7 +85,6 @@ class VectorStoresActivity : AppCompatActivity() {
         }
 
         Toast.makeText(this, "Refreshing...", Toast.LENGTH_SHORT).show()
-        // Load initial data.
         loadVectorStores()
     }
 
@@ -110,7 +109,7 @@ class VectorStoresActivity : AppCompatActivity() {
 
     /**
      * Helper function to get the API auth header.
-     * Returns null if configuration is missing.
+     * Returns null if configuration is missing or the API key is blank.
      */
     private suspend fun getAuthHeader(): String? {
         val config = withContext(Dispatchers.IO) { db.apiConfigDao().getConfig() }
@@ -130,6 +129,7 @@ class VectorStoresActivity : AppCompatActivity() {
 
     /**
      * Loads all vector stores from the server.
+     * If the API returns 401, advises the user that the API key is invalid.
      */
     private fun loadVectorStores() {
         if (!isNetworkAvailable()) {
@@ -163,11 +163,19 @@ class VectorStoresActivity : AppCompatActivity() {
                         ).show()
                     }
                 } else {
-                    Toast.makeText(
-                        this@VectorStoresActivity,
-                        "We couldn't load your vector stores at the moment.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    if (response.code() == 401) {
+                        Toast.makeText(
+                            this@VectorStoresActivity,
+                            "Invalid API key. Please update your settings.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        Toast.makeText(
+                            this@VectorStoresActivity,
+                            "We couldn't load your vector stores at the moment.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("VectorStoresActivity", "Error loading vector stores: ${e.message}")
@@ -182,6 +190,7 @@ class VectorStoresActivity : AppCompatActivity() {
 
     /**
      * Deletes the specified vector store via the API and refreshes the list.
+     * If a 401 error is returned, advises the user that the API key is invalid.
      */
     private suspend fun deleteVectorStore(vectorStore: VectorStoreResponse) {
         if (!isNetworkAvailable()) {
@@ -203,11 +212,19 @@ class VectorStoresActivity : AppCompatActivity() {
                 ).show()
                 loadVectorStores()
             } else {
-                Toast.makeText(
-                    this,
-                    "We couldn't delete your vector store.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                if (response.code() == 401) {
+                    Toast.makeText(
+                        this,
+                        "Invalid API key. Please update your settings.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        this,
+                        "We couldn't delete your vector store.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         } catch (e: Exception) {
             Toast.makeText(
